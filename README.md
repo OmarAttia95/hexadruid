@@ -29,7 +29,15 @@ pip install --upgrade hexadruid
 - ⚙️ **Auto-Parameter Advisor** for optimal salt count and shuffle parallelism
 - 📉 **Z-Score Plots** and **partition size diagnostics** for visibility
 - ✅ Fully **PySpark-native** — No RDDs, no CLI dependencies, no black-box wrappers
-
+- 🚨 **Robust headerless/corrupt file handling:** `schemaVisor()` now safely infers schema even for files without headers, random/duplicate columns, and all-null columns, automatically skipping or dropping problematic columns.
+- 🛡️ **Automatic type correction:** String columns with mostly-numeric content are auto-cast to `IntegerType`/`DoubleType` with fallback and null-tolerant handling.
+- 🏷️ **Column profile metadata:** All inferred columns include `cardinality`, `is_categorical`, `max_length`, and `avg_length` in metadata for downstream ML or analytics.
+- 📉 **All-null column detection and drop:** Empty columns are automatically flagged and excluded from the inferred schema.
+- 🪓 **Improved error handling:** No more crashes when loading malformed, sparse, or incomplete CSV/Parquet/JSON files.
+- 🪄 **Safer fallbacks:** DRTree logic now always returns a safe fallback if no splits or predicates are found (avoids runtime errors).
+- 📜 **Verbose logging for edge cases:** All non-critical issues (like fully-empty columns, unknown types) are now logged as warnings, not hard errors.
+- 🦾 **Internal modularization:** Codebase refactored for maintainability and extensibility.
+- 🧪 **Expanded test coverage:** Fuzzed and synthetic data edge cases now fully covered in tests.
 ---
 
 ## 🧠 Quickstart
