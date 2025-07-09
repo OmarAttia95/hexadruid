@@ -11,7 +11,7 @@
 ## 🚀 Installation
 
 ```bash
-pip install hexadruid
+pip install hexadruid==0.1.7
 ```
 
 ---
