@@ -5,16 +5,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="hexadruid",
-    version="0.1.7", 
+    version="0.1.8",
     author="Omar Attia",
     description="Smart Spark Optimizer: Skew Rebalancer + Key Detector + DRTree",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/OmarAttia95/hexadruid",
-     packages=find_packages(include=["hexadruid", "hexadruid.*"]),
+    packages=find_packages(include=["hexadruid", "hexadruid.*"]),
     include_package_data=True,
     package_data={
-        "hexadruid": ["_core.py", "pyarmor_runtime_000000/*"],
+        "hexadruid": ["hexadruid_core.pyd", "hexadruid_core.pyi"],  # Only compiled/core files!
     },
     python_requires=">=3.8",
     install_requires=[

@@ -1,28 +1,60 @@
-# Python bytecode
+# Bytecode cache and compiled Python files
 __pycache__/
 *.py[cod]
 *.pyo
 
-# PyArmor runtime - exclude if generated dynamically
+# PyArmor runtime and obfuscated files (never commit obfuscated core or runtime)
 pyarmor_runtime_000000/
+*_core.*
+*_core.py
+*_core.pyd
+*_core.so
+*_core.pyo
 
-# Build & packaging
+# Nuitka build artifacts
+*.build/
+*.pyd
+*.o
+*.exp
+*.lib
+*.dll
+*.manifest
+
+# Build and packaging artifacts
 build/
 dist/
 *.egg-info/
 *.tar.gz
 *.whl
 
-# PyArmor encrypted source if not to be exposed
-_core.py
-
-# VS Code settings (optional)
+# VS Code and IDE/project settings
 .vscode/
+.idea/
+*.iml
 
-# Jupyter Notebook checkpoints
+# Notebook checkpoints
 .ipynb_checkpoints/
 
-# Project-local config/logs (optional)
+# Project-local config/logs/secrets
 *.log
 *.env
 .DS_Store
+.env.*
+.secret.*
+secrets.*
+
+# OS/Explorer junk
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Don't ignore your documentation and README!
+!README.md
+!docs/
+
+# Optional: ignore test outputs
+*.pytest_cache/
+coverage.*
+htmlcov/
+.tox/
+.cache/

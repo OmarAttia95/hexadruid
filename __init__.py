@@ -1,3 +1,1 @@
-from .hexadruid import HexaDruid
-
-__all__ = ["HexaDruid"]
+from .hexadruid_core import *
