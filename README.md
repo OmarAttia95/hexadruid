@@ -13,7 +13,11 @@
 ```bash
 pip install hexadruid
 ```
+To upgrade to the latest version?
 
+```bash
+pip install --upgrade hexadruid
+```
 ---
 
 ## 🔍 Features
