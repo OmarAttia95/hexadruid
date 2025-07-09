@@ -67,6 +67,24 @@ But **most rows have the same `amount`**, so Spark sends 99% of the work to 1 ex
 
 ---
 
+## 🛠️ Main Classes & API Reference
+
+Here are the key classes exposed by the HexaDruid package:
+
+| Class                  | Description                                                                         |
+|------------------------|-------------------------------------------------------------------------------------|
+| `HexaDruid`            | Main entrypoint; handles smart salting, key detection, and schema optimization      |
+| `SkewFeatureDetector`  | Detects skewed numeric columns for rebalancing                                      |
+| `KeyFeatureDetector`   | Detects primary/composite keys (unique columns/combinations)                        |
+| `DRTree`               | Decision Rule Tree for logical sharding                                             |
+| `AutoParameterAdvisor` | Recommends optimal columns for skew balancing and groupBy                           |
+| `AdaptiveShuffleTuner` | Tunes shuffle partition count dynamically                                           |
+| `Branch`, `Root`       | (Advanced) Internal tree structure helpers                                          |
+
+See [API Docs](link-to-full-docs) for detailed method and argument listings.
+
+---
+
 ### ⚖️ Smart Salting to the Rescue
 
 ```python
