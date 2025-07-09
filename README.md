@@ -4,11 +4,11 @@
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**HexaDruid** is an intelligent Spark optimizer designed to tackle value skew, schema bloat, and ambiguous key detection using recursive decision-rule trees and adaptive tuning. It enables smart salting, distributed key detection, and shard-aware schema inference — all with PySpark's native DataFrame API.
+**HexaDruid** is an intelligent Spark optimizer designed to tackle **data skew**, **ambiguous key detection**, and **schema bloat** using smart salting, recursive shard-aware rule trees, and adaptive tuning. It enables better parallelism, safer memory layout, and intelligent insight into skewed datasets using PySpark’s native DataFrame API.
 
 ---
 
-## 📦 Installation
+## 🚀 Installation
 
 ```bash
 pip install hexadruid
@@ -18,30 +18,30 @@ pip install hexadruid
 
 ## 🔍 Features
 
-- 📊 Smart salting using IQR or z-score binning
-- 🌲 Recursive DRTree-based shard splitting (non-linear DAG logic)
-- 🔑 Primary & Composite Key Detection (UUIDs, strings, hexadecimals)
-- 🧠 Schema Inference with memory-safe type coercion and metadata hints
-- 🧪 Z-score visualizations and partition diagnostics
-- ⚙️ Auto tuning of salt count and shuffle partitions
-- ✅ 100% Spark-native — no RDDs, no CLI, no external dependencies
+- 📊 **Smart Salting** using Z-score or IQR skew analysis + percentile bucketing
+- 🌲 **Recursive DRTree** for shard-based logical filtering with SQL predicates
+- 🔑 **Primary & Composite Key Detection** (UUIDs, alphanumerics, hex — optional)
+- 🧠 **Schema Inference** with safe type coercion, length introspection & metadata tags
+- ⚙️ **Auto-Parameter Advisor** for optimal salt count and shuffle parallelism
+- 📉 **Z-Score Plots** and **partition size diagnostics** for visibility
+- ✅ Fully **PySpark-native** — No RDDs, no CLI dependencies, no black-box wrappers
 
 ---
 
-## 🚀 Quickstart
+## 🧠 Quickstart
 
 ```python
 from hexadruid import HexaDruid
 
 hd = HexaDruid(df)
 
-# Balance skew in a numeric column
+# Step 1: Apply smart salting to balance skew
 df_salted = hd.apply_smart_salting("sales_amount")
 
-# Detect keys (UUIDs, composite, etc.)
-key = hd.detect_keys()
+# Step 2 (Optional): Detect candidate primary or composite keys
+key_info = hd.detect_keys()
 
-# Infer schema and shard tree
+# Step 3: Run schema optimizer + DRTree analyzer
 typed_df, inferred_schema, dr_tree = HexaDruid.schemaVisor(df)
 ```
 
@@ -49,129 +49,182 @@ typed_df, inferred_schema, dr_tree = HexaDruid.schemaVisor(df)
 
 ## 📚 What Does It Do?
 
-Imagine this DataFrame:
+Imagine a typical DataFrame:
 
-| order_id (UUID) | amount |
-|-----------------|--------|
-| a12e...         | 500.0  |
-| b98c...         | 5000.0 |
-| ...             | ...    |
+| order_id (UUID) | amount  |
+|-----------------|---------|
+| a12e...         | 500.0   |
+| b98c...         | 5000.0  |
+| ...             | ...     |
 
-You want to `groupBy("amount")`, but most rows have the same few values → Spark chokes on skew.
+You're doing:
 
-### 🔥 With HexaDruid:
+```python
+df.groupBy("amount").agg(...)
+```
+
+But **most rows have the same `amount`**, so Spark sends 99% of the work to 1 executor = skew 💥
+
+---
+
+### ⚖️ Smart Salting to the Rescue
 
 ```python
 df2 = hd.apply_smart_salting("amount")
 ```
 
-It:
-
-1. Detects skew using IQR asymmetry or z-score
-2. Creates a `salt` column using percentile splits
-3. Builds `salted_key = concat(amount, salt)`
-4. Repartitions the DataFrame using `salted_key`
-
-✅ Result: Balanced shuffle across executors.
-
----
-
-## 🌳 DRTree (Decision Rule Tree) — Deep Dive
-
-HexaDruid’s `drTree()` is not a classifier. It's a recursive shard explainer that builds SQL-compatible predicates based on imbalanced features.
-
-Each node evaluates data distribution and splits the dataset using decision logic on the best skewed column.
-
-### ASCII Tree
+What happens?
 
 ```
-                [Root: sales_amount]
-                        |
-             ┌──────────┴────────────┐
-     [amount <= 500]         [amount > 500]
-           |                         |
-       [Leaf A]                  [Leaf B]
-    (shard_1234)              (shard_5678)
+ Step 1: Analyze column distribution via IQR or Z-score
+ Step 2: Generate N percentile buckets
+ Step 3: Assign salt ID per row using bucket bounds
+ Step 4: Create salted_key = amount_salt
+ Step 5: Repartition on salted_key for parallelism
 ```
 
-- **Root**: Skewed feature selected for first split
-- **Branches**: Logical split conditions (e.g., amount <= 500)
-- **Leaves**: Filtered DataFrames with shard metadata
-- **Output**: SQL predicates reusable for schemaVisor, key detection, or isolation
+📈 This rebalances the shuffle phase for joins, groupBy, and aggregates.
 
 ---
 
-## 🔬 Smart Salting Algorithm
+### 🧠 DRTree Explained Visually
 
-**Input**: Skewed numeric column  
-**Goal**: Equalize shuffle load in `groupBy`, `join`
+The DRTree is a **decision-rule tree**, not a classifier.
 
-### Steps:
+It recursively splits data into shards by applying SQL-style predicates. Each leaf is a filtered logical subset of the DataFrame.
 
-1. **Skew Check**:
-   ```python
-   z = (x - mean(x)) / std(x)   # or use IQR-based rule
-   ```
-2. **Percentile Splitting**:
-   ```python
-   bounds = percentile_approx(x, [0%, 10%, ..., 100%])
-   ```
-3. **Salt Assignment**:
-   ```python
-   salt = when((x >= b0) & (x < b1), 0).when(...)...
-   ```
-4. **Salted Key & Repartition**:
-   ```python
-   salted_key = concat_ws("_", col("x"), col("salt"))
-   df.repartition(N, salted_key)
-   ```
+```
+                        [Root: sales_amount]
+                                |
+                   ┌───────────┴────────────┐
+        [amount <= 500]             [amount > 500]
+               |                           |
+       ┌───────┴───────┐            ┌──────┴───────┐
+ [amount <= 100] [>100, ≤500]   [>500, ≤1000]  [>1000]
+       |         |                  |             |
+   [Leaf A]   [Leaf B]          [Leaf C]       [Leaf D]
+ (shard_1)   (shard_2)         (shard_3)      (shard_4)
+```
 
-🎯 Auto-tuned salt count if not provided.
+Each **leaf** holds:
+- Filtered subset of the DataFrame (as a Spark SQL query)
+- Associated metadata like row count, min/max, schema drift
+- Auto key detection can run **within** these shards
 
 ---
 
-## 🔑 Key Detection (UUIDs, Alphanumerics, Composite)
+### 🔬 Leaf-Level Parallelization
+
+DRTree enables **parallel insight**:
+
+- Each leaf is **autonomous** (you can infer schema, key, and stats per leaf)
+- Makes the system robust to changes over time (drift detection)
+- Enables controlled analytics:
+  
+```
+[DRTree Output]
+Leaf A:
+  - rows: 30K
+  - key_confidence: 0.92
+  - type: Float(5,2)
+
+Leaf D:
+  - rows: 300K (hotspot!)
+  - key_confidence: 0.12
+  - type: String(255)
+```
+
+---
+
+## 🔑 Key Detection (Optional & Shard-Aware)
 
 ```python
 key_info = hd.detect_keys()
 ```
 
-### Primary Key Scoring:
+You **don’t need to force primary keys**.
+
+This is just **analysis** — it evaluates uniqueness confidence for each column (or combination of columns):
+
+- **Primary Key:**
 
 ```python
-score = approx_count_distinct(col) / total_rows - null_ratio
-if score ≥ 0.99:
-    → confident primary key
+score = (approx_count_distinct(col) / total_rows) - null_ratio
 ```
 
-### Composite Key:
+If `score ≥ 0.99`, it’s a good candidate.
+
+- **Composite Key:**
 
 ```python
-combo = concat_ws("_", col1, col2, ...)
-score = approx_count_distinct(combo) / total_rows - null_ratio
-if score ≥ 0.99:
-    → confident composite key
+combo_key = concat_ws("_", col1, col2, ...)
+score = approx_count_distinct(combo_key) / total_rows - null_ratio
 ```
 
-💡 Supports detection of:
-- UUIDs
-- Alphanumeric IDs
-- Hexadecimal fields
-- Concatenated business keys
+DRTree passes its **shard filters** into `detect_keys()` to evaluate keys per **subgroup** — boosting accuracy.
 
 ---
 
-## 🧠 schemaVisor (Schema + Tree Inference)
+## 🧠 Smart Salting Internals
+
+### 🧪 Step-by-step:
+
+1. **Detect Skew**  
+   - If `z_score` range is too large or  
+   - IQR shows asymmetry (Q3 - Q2 ≫ Q2 - Q1)
+
+2. **Split by Percentiles**
 
 ```python
-typed_df, inferred_schema, tree = HexaDruid.schemaVisor(df)
+percentiles = percentile_approx("amount", [0.0, 0.1, ..., 1.0])
 ```
 
-### Features:
+3. **Salt Bucketing Logic**
 
-- Optimizes column types: string → varchar(x), float → int if safe
-- Adds logical metadata (nullable, min_len, max_len)
-- Connects schema + tree for shard-specific schema enforcement
+```python
+salt = when(col >= p0 & col < p1, 0) \
+     .when(col >= p1 & col < p2, 1) ...
+```
+
+4. **Create Salted Key**
+
+```python
+salted_key = concat_ws("_", col("amount"), col("salt"))
+df = df.withColumn("salted_key", salted_key).repartition("salted_key")
+```
+
+5. **Auto-Tune Salt Count**
+
+- If distribution is dense, fewer buckets suffice
+- Otherwise, more salting is applied dynamically
+
+---
+
+## 📈 Visualization Example
+
+Output from `schemaVisor()`:
+
+```
+Leaf Node A [shard_0]
+- size: 102,391
+- type: Float(8,2)
+- confidence: 92%
+
+Leaf Node B [shard_1]
+- size: 489,128 (dense zone)
+- skew detected!
+- Recommended salt count: 10
+```
+
+You can visualize the Z-score distribution:
+
+```
+Before:
+  [■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■             ]
+
+After:
+  [■■■■■■■■■■■■■■■■■■■■■      ■■■■■■■■■■■■■■■■■■■■■■   ]
+```
 
 ---
 
@@ -181,31 +234,35 @@ typed_df, inferred_schema, tree = HexaDruid.schemaVisor(df)
 pytest tests/
 ```
 
-Mocked SparkSession and sample DataFrames are included.
+Mocked `SparkSession` with synthetic data is used to ensure full coverage.
 
 ---
 
-## 🧱 Project Structure
+## 🧱 Suggested Project Structure
 
 ```
 hexadruid/
-├── core.py                # Main interface
-├── skew_balancer.py       # Salting + distribution logic
-├── key_detection.py       # Primary + composite key analysis
-├── schema_optimizer.py    # schemaVisor and type casting
-├── drtree.py              # DRTree recursive engine
-├── advisor.py             # Parameter tuning module
-└── utils.py               # Plotting, IQR, logging
+├── __init__.py
+├── core.py                # HexaDruid entry point
+├── skew_balancer.py       # Smart salting logic
+├── drtree.py              # DRTree shard splitting
+├── key_detection.py       # Unique key checker
+├── schema_optimizer.py    # Type inference
+├── advisor.py             # Parameter tuning
+├── utils.py               # Logging, plots, etc.
+└── tests/                 # Test suite
 ```
 
 ---
 
-## 🛣️ Roadmap
+## 🔧 Roadmap
 
-- [ ] Delta Lake & Apache Iceberg compatibility
-- [ ] CLI & REST API
-- [ ] Auto JSON export of tree branches for audit
-- [ ] JupyterLab plugin for visual shard insight
+- [ ] CLI interface  
+- [ ] Delta Lake + Iceberg support  
+- [ ] JupyterLab extension  
+- [ ] DRTree JSON export for audits  
+- [ ] Cost metrics estimation  
+- [ ] Column statistics and visualization dashboard
 
 ---
 
@@ -217,5 +274,8 @@ MIT License
 
 ## 🤝 Contributing
 
-Pull requests, issues, and ideas are welcome!  
-HexaDruid is evolving — your insights shape its intelligence.
+Pull requests, ideas, and contributions welcome!
+
+We believe Spark shouldn’t be slow. Let’s make it smarter together.
+
+---
