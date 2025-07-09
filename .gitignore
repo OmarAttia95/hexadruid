@@ -1,6 +1,28 @@
-hexadruid/
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# PyArmor runtime - exclude if generated dynamically
+pyarmor_runtime_000000/
+
+# Build & packaging
 build/
 dist/
 *.egg-info/
-__pycache__/
-*.pyc
+*.tar.gz
+*.whl
+
+# PyArmor encrypted source if not to be exposed
+_core.py
+
+# VS Code settings (optional)
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Project-local config/logs (optional)
+*.log
+*.env
+.DS_Store
