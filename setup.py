@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="hexadruid",
-    version="0.1.0",
+    version="0.1.1",
     packages=find_packages(),
     include_package_data=True,
-    package_data={'hexadruid': ['__pycache__/*']},  # ← FIXED: missing comma here
+    package_data={'hexadruid': ['__pycache__/*']}, 
     python_requires=">=3.8",
     install_requires=[
         "pyspark>=3.5.1",
@@ -20,6 +20,7 @@ setup(
     description="Smart Spark Optimizer: Skew Rebalancer + Key Detector + DRTree",
     long_description=long_description,
     long_description_content_type="text/markdown",
+    url="https://github.com/OmarAttia95/hexadruid",
     license="MIT",
     classifiers=[
         "Programming Language :: Python :: 3",
