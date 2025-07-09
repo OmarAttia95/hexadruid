@@ -85,7 +85,104 @@ Here are the key classes exposed by the HexaDruid package:
 | `AdaptiveShuffleTuner` | Tunes shuffle partition count dynamically                                           |
 | `Branch`, `Root`       | (Advanced) Internal tree structure helpers                                          |
 
-See [API Docs](link-to-full-docs) for detailed method and argument listings.
+---
+
+---
+
+## 📑 API Reference
+
+All core APIs are PySpark DataFrame-native. Below are the main classes and methods:
+
+---
+
+### `HexaDruid`
+
+| Method                                                                          | Description                                                                                         |
+|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `HexaDruid(df, salt_count=10, output_dir="hexa_druid_outputs")`                  | Initialize with a Spark DataFrame. Optional: set default salt bucket count and output directory.    |
+| `apply_smart_salting(col_name, visualize=True, fine_tune=True, auto_tune=True, target_rows=1_000_000)` | Balance skew in `col_name` by bucketizing (salting), visualizing, tuning salt count, and auto-tuning partitions. Returns a salted DataFrame with new columns: `salt`, `salted_key`. |
+| `detect_keys(dr_tree=None, composite_max_size=3, composite_threshold=0.99, verbose=True)` | Detects the best candidate for a **primary key** or a **composite key**. Uses shard-aware logic if a `dr_tree` is passed. Returns a dict: `{type, columns, confidence}` or None.     |
+| `repartition_on_salt(num_partitions=10)`                                         | Repartitions the salted DataFrame evenly on the `salted_key` column. Returns a repartitioned DataFrame.                     |
+| `show_partition_sizes(df, label="")`                                             | Prints the record count of each partition in the DataFrame, labeled for diagnostics.                                        |
+| `build_shard_tree(detector, max_depth=3, min_samples=500)`                       | Recursively build a logical sharding tree (DRTree) by splitting on skewed columns. Detector must implement `.detect()`.    |
+| `analyze_distribution(col_name)`                                                 | Returns distribution stats (`p95`, `p05`, `mean`, `std`) for a given column.                                              |
+| `schemaVisor(df, sample_fraction=0.2, max_depth=3, min_samples=500, skew_thresh=0.1, skew_top_n=3)` *(static)* | Infers schema types, casts columns, and builds a DRTree for sharding. Returns a tuple: (`typed_df`, `StructType`, `DRTree`). |
+| `infer_numeric_columns(df)` *(static)*                                           | Returns a list of numeric columns (int, float, double, long, bigint).                                                    |
+| `detect_low_cardinality_categorical(df)` *(static)*                              | Finds the first string column with ≤20 unique values (good for groupBy). Raises ValueError if none found.                  |
+| `timeit(func, label="")` *(static)*                                              | Times the execution of a function and logs the result.                                                                    |
+| `_plot_comparison(col_name, df2)` *(private)*                                    | Generates and saves z-score barplots for original vs salted columns.                                                      |
+
+---
+
+### `SkewFeatureDetector`
+
+| Method                                            | Description                                                              |
+|---------------------------------------------------|--------------------------------------------------------------------------|
+| `SkewFeatureDetector(threshold=0.1, top_n=3)`     | Initialize detector with skew threshold and number of columns to return. |
+| `detect(df)`                                      | Returns the top-N most skewed numeric columns by quartile-based score.   |
+
+---
+
+### `KeyFeatureDetector`
+
+| Method                                                                                                   | Description                                                        |
+|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| `KeyFeatureDetector(verbose=False)`                                                                      | Initialize detector for verbose logging.                           |
+| `detect(df, dr_tree=None)`                                                                               | Returns best candidate key columns (single/composite), optionally shard-aware. List[str].        |
+| `detectPrimaryKey(df, dr_tree=None, confidence_threshold=0.99, verbose=False)` *(static)*                | Detects primary key with confidence score. Returns dict or None.   |
+| `detectCompositeKey(df, dr_tree=None, max_combination_size=3, confidence_threshold=0.99, verbose=False)` *(static)* | Detects composite keys by testing combinations of 2-3 columns. Returns dict or None.    |
+
+---
+
+### `AutoParameterAdvisor`
+
+| Method                                                     | Description                                                           |
+|------------------------------------------------------------|-----------------------------------------------------------------------|
+| `AutoParameterAdvisor(df, skew_top_n=3, cat_top_n=3)`      | Initialize with DataFrame and how many top columns to suggest.        |
+| `recommend()`                                              | Returns (skew candidates, groupBy candidates, metrics DataFrame).     |
+| `advise()`                                                 | Interactive prompt: pick skew/groupBy columns (returns 2 strings).    |
+
+---
+
+### `DRTree`
+
+| Method                       | Description                                               |
+|------------------------------|-----------------------------------------------------------|
+| `DRTree()`                   | Create a new, empty Decision Rule Tree.                   |
+| `add_root(root)`             | Add a `Root` node to the DRTree.                          |
+| `to_dict()`                  | Returns a JSON-serializable dictionary of the tree.       |
+
+---
+
+### `Branch`, `Root`, `DecisionNode`, `LeafNode`
+
+- **Branch**: Simple data holder for a leaf/shard predicate and its name.
+- **Root**: Logical tree root node; holds one or more branches.
+- **DecisionNode**: Internal tree node representing a split on a numeric column.
+- **LeafNode**: Terminal node; represents a filtered logical subset ("shard") of your data.
+
+---
+
+### `balance_skew`
+
+| Function                                                   | Description                                                                                           |
+|------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `balance_skew(df, output_dir="hexa_druid_outputs", partitions=10, verbose=False)` | Runs full salting pipeline interactively: prompts for skew/groupBy columns, applies salting, shows before/after partition diagnostics. Returns a new DataFrame. |
+
+---
+
+### `AdaptiveShuffleTuner`
+
+| Method                                     | Description                                                     |
+|---------------------------------------------|-----------------------------------------------------------------|
+| `tune(spark, df, target_rows=1_000_000)` *(static)* | Auto-tunes shuffle partitions based on target rows per partition. Returns repartitioned DataFrame. |
+
+---
+
+> **Tip:**  
+> - See the `tests/` directory for working code samples and usage patterns.
+> - All methods are intended for use with Spark DataFrames (PySpark >= 3.5.1).
+> - Advanced users can directly use the `KeyFeatureDetector`, `SkewFeatureDetector`, and `AutoParameterAdvisor` in custom pipelines.
 
 ---
 
