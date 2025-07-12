@@ -1,5 +1,35 @@
 # Changelog
 
+# Changelog for HexaDruid v2.1
+
+## [2.1] - 2025-07-12
+### Added
+- Full dynamic schema inference with null threshold and optional column protection.
+- Enhanced DRTree to provide concise or detailed shard predicate descriptions.
+- Smart salting with auto parameter tuning based on data distribution and Spark parallelism.
+- Key detection improved to find primary and composite keys with confidence scoring.
+- Adaptive shuffle tuning to optimize Spark partition count based on data size.
+- Interactive advisor class for guided skew and grouping column selection.
+- Detailed profiling output including null fractions, cardinality, and data types.
+- Support for robust null handling and optional auto-drop of highly null columns.
+- Visualization of original vs salted data z-scores saved as PNG files.
+- Logging improvements and time measurement utilities for performance tracking.
+
+### Fixed
+- Fixed bug in schemaVisor where typed DataFrame was not properly initialized before casting.
+- Fixed DRTree `to_dict` method to accept concise output flag without breaking compatibility.
+- Corrected skew detection to avoid exceptions on malformed or missing numeric columns.
+- Fixed headerless CSV detection logic to correctly drop header rows after renaming.
+- Improved error handling during casting operations to use `try_cast` and avoid job failures.
+
+### Removed
+- Deprecated earlier static methods replaced by better instance method implementations.
+- Removed hard-coded default partitions in favor of dynamic tuning.
+
+### Notes
+- This release lays the groundwork for full multi-format input support (CSV, JSON, Parquet, Avro, DB tables).
+- Next updates will focus on enhanced schema inference, multi-format ingestion, and streaming support.
+---
 ## [0.2.0] - 2025-07-12
 ### Changed
 - Rebuilt core as obfuscated module using Nuitka for code protection.
