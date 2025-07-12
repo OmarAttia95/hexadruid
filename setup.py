@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="hexadruid",
-    version="0.1.8",
+    version="0.1.9",
     author="Omar Attia",
     description="Smart Spark Optimizer: Skew Rebalancer + Key Detector + DRTree",
     long_description=long_description,

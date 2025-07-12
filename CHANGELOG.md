@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9] - 2025-07-12
+
+### Changed
+- Core module (`hexadruid_core.py`) fully obfuscated and now distributed as a compiled binary (`hexadruid_core.pyd`) for enhanced security and IP protection.
+- Improved internal error handling during schema inference and data casting, making HexaDruid far more robust on dirty, real-world data.
+- Updated `schemaVisor()` to use `try_cast` for all numeric, date, and timestamp conversions, auto-nullifying malformed values and preventing pipeline crashes.
+- Enhanced dynamic header detection and handling for headerless and corrupted CSV/Parquet files.
+- Smarter dropping of all-null and garbage columns based on robust sampling.
+- Performance tuning and minor bug fixes for DataFrame analysis and partitioning.
+- Refactored package layout to remove legacy files and simplify the import structure.
+
+### Added
+- Dynamic fallback for cases when no skewed columns are detected: HexaDruid now skips salting automatically and informs the user.
+- Improved debug and info logging for all major steps, making pipeline issues easier to trace.
+
+### Security
+- Major codebase obfuscation using Nuitka; core business logic now protected as compiled bytecode.
+
 ---
 
 ## [0.1.8] - 2025-07-09
