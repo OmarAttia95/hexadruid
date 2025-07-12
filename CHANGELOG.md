@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0] - 2025-07-12
+### Changed
+- Rebuilt core as obfuscated module using Nuitka for code protection.
+- Removed all unnecessary files and previous builds.
+- Improved compatibility and reduced source code exposure for SaaS deployment.
+- Bugfixes and performance optimizations.
+
+---
+
 ## [1.9] - 2025-07-12
 
 ### Changed
