@@ -148,9 +148,9 @@ df_inter = HexaDruid(df).interactive_optimize(df)
 
 **🛠️ API Reference**
 
-`**HexaDruid**`
+**`HexaDruid`**
 
-```
+```markdown
 | Method | Signature | 
 |-------------|-----------|
 | Constructor     | `HexaDruid(df, output_dir="hexa_druid_outputs")`    | 
@@ -162,7 +162,7 @@ df_inter = HexaDruid(df).interactive_optimize(df)
 ```
 **Wrappers & Utilities**
 
-```
+```markdown
 | Function / Class | 	Description | 
 |-------------|-----------|
 | `simple_optimize`     | infer_schema + apply_smart_salting in one call    | 
