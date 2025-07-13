@@ -148,29 +148,33 @@ df_inter = HexaDruid(df).interactive_optimize(df)
 
 **🛠️ API Reference**
 
-**`HexaDruid`**
+### **`HexaDruid` Core Methods**
 
 ```markdown
-| Method | Signature | 
-|-------------|-----------|
-| Constructor     | `HexaDruid(df, output_dir="hexa_druid_outputs")`    | 
-| schemaVisor      | 	`(sample_frac=0.01, max_sample=1000) → (typed_df, schema, dr)` | 
-| detect_skew  | `(threshold=0.1, top_n=3) → List[str]` |
-| apply_smart_salting  | `(col_name=None, salt_count=None) → DataFrame` |
-| detect_keys  | `(threshold=0.99, max_combo=3) → List[str]` |
-| build_shard_tree  | `(detector, max_depth=3, min_samples=500) → DRTree` |
+| Method               | Signature                                                                 |
+|----------------------|---------------------------------------------------------------------------|
+| Constructor          | `HexaDruid(df, output_dir="hexa_druid_outputs")`                          |
+| schemaVisor          | `(sample_frac=0.01, max_sample=1000) → (typed_df, schema, dr)`            |
+| detect_skew          | `(threshold=0.1, top_n=3) → List[str]`                                    |
+| apply_smart_salting  | `(col_name=None, salt_count=None) → DataFrame`                            |
+| detect_keys          | `(threshold=0.99, max_combo=3) → List[str]`                               |
+| build_shard_tree     | `(detector, max_depth=3, min_samples=500) → DRTree`                       |
 ```
-**Wrappers & Utilities**
+
+---
+
+### **Wrappers & Utilities**
 
 ```markdown
-| Function / Class | 	Description | 
-|-------------|-----------|
-| `simple_optimize`     | infer_schema + apply_smart_salting in one call    | 
-| `visualize_salting`      | 		Print before/after distributions for a given column | 
-| `interactive_optimize`  | Advisor → table → prompt → salting |
-| `AutoParameterAdvisor`  | `recommend() → (skew_cols, cat_cols, metrics_df)` |
-| `DRTree`, `Branch`, `Root`  | 	Build and inspect decision-rule trees for logical sharding |
+| Function / Class          | Description                                                           |
+|---------------------------|-----------------------------------------------------------------------|
+| `simple_optimize`         | Infer schema + apply smart salting in one call                        |
+| `visualize_salting`       | Print before/after z-score distributions for a given column           |
+| `interactive_optimize`    | Advisor → table → prompt → salting pipeline                           |
+| `AutoParameterAdvisor`    | `recommend() → (skew_cols, cat_cols, metrics_df)`                     |
+| `DRTree`, `Branch`, `Root`| Build and inspect decision-rule trees for logical sharding            |
 ```
+
 
 🧪 **Testing**
 
