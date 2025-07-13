@@ -58,3 +58,8 @@ coverage.*
 htmlcov/
 .tox/
 .cache/
+hexadruid/
+artifacts/
+dist/
+hexa_druid_outputs/
+hexadruid.egg-info/
