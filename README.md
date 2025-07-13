@@ -4,7 +4,8 @@
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**HexaDruid** is an intelligent Spark optimizer designed to tackle **data skew**, **ambiguous key detection**, and **schema bloat** using smart salting, recursive shard-aware rule trees, and adaptive tuning. It enables better parallelism, safer memory layout, and intelligent insight into skewed datasets using PySpark’s native DataFrame API.
+**HexaDruid** is a Spark-native optimizer that tackles **data skew**, **ambiguous key detection**, and **schema bloat** using advanced salting, rule-based decision trees (DRTree), and adaptive partition tuning.  
+It operates in **two Spark stages**, with no Pandas, no UDFs, and no external engines.
 
 ---
 
@@ -25,25 +26,25 @@ pip install --upgrade hexadruid
 ## 🔍 Features
 
 - 🎯 **Heavy-Hitter Salting**  
-  Auto-detects the hottest keys and spreads them randomly; hashes the rest. Two–stage shuffle with O(N) performance.
+  Auto-detects the hottest keys and spreads them randomly. Hashes remaining keys. Two-stage shuffle with O(N) performance.
 
-- ⚙️ **Dynamic API**
+- ⚙️ **Dynamic API**  
   ```python
   hd.apply_smart_salting(col_name=None, salt_count=None)
   ```
-  Auto-detects `col_name` and `salt_count` if omitted.
+  Auto-selects column and salt count if omitted.
 
 - 🧠 **Fast Schema Inference**  
-  Single `.limit(max_sample).collect()` → regex/JSON sniff → safe `try_cast()`. Sub-second on 100K rows.
+  Single `.limit().collect()` pass + safe `try_cast()` logic. Sub-second on 100K+ rows.
 
 - 🌲 **DRTree Sharding**  
-  One-level or recursive logical filters for skew mitigation. Always falls back to an `all` branch.
+  Recursive decision rule trees for logical partitioning and filtering. Always yields a fallback `all → true` branch.
 
 - 🔑 **Key Detection**  
-  Finds primary/composite keys with confidence scoring; always returns the best candidate.
+  Detects both primary and composite keys using uniqueness ratios.
 
 - 📈 **Auto-Parameter Advisor**  
-  Detects top skewed and categorical columns using sample-based heuristics.
+  Recommends skewed numeric and low-cardinality string columns using IQR and cardinality metrics.
 
 - 📊 **Beginner-Friendly Wrappers**  
   - `simple_optimize(df, skew_col, sample_frac, salt_count)`  
@@ -51,7 +52,7 @@ pip install --upgrade hexadruid
   - `interactive_optimize(df)`
 
 - 🚨 **Robustness**  
-  Handles nulls, headerless files, corrupt formats, and verbose edge case logging.
+  Handles nulls, malformed types, no-header files, corrupt values, all-null columns, and more.
 
 ---
 
@@ -62,11 +63,11 @@ from pyspark.sql import SparkSession
 from hexadruid import HexaDruid, simple_optimize, visualize_salting
 
 spark = SparkSession.builder.getOrCreate()
-spark.conf.set("spark.sql.shuffle.partitions", "8")  # match your bucket count
+spark.conf.set("spark.sql.shuffle.partitions", "8")  # match salt count
 
 df = spark.read.csv("data.csv", header=True, inferSchema=False)
 
-# 1) Fast schema + default DRTree
+# 1) Fast schema + DRTree
 typed_df, schema, dr_tree = HexaDruid(df).schemaVisor()
 print("Schema:", schema.simpleString())
 
@@ -76,12 +77,11 @@ df_salted.groupBy("salt").count().show()
 
 # 3) One-liner optimize
 df_opt = simple_optimize(df, skew_col="user_id", salt_count=5)
-df_opt.groupBy("salt").count().show()
 
-# 4) Visualize before/after
+# 4) Visualize skew impact
 visualize_salting(df, skew_col="user_id", salt_count=5)
 
-# 5) Interactive tuning
+# 5) Interactive optimization with smart prompts
 df_inter = HexaDruid(df).interactive_optimize(df)
 ```
 
@@ -91,74 +91,97 @@ df_inter = HexaDruid(df).interactive_optimize(df)
 
 ### Heavy-Hitter Salting
 
-1. Detect the top skewed column if none is provided  
-2. If `salt_count` is not set → default to `sparkContext.defaultParallelism`  
-3. Identify heavy keys by frequency  
+1. If `col_name` not provided, detect skewed column.  
+2. If `salt_count` is None, use `sc.defaultParallelism`.  
+3. Group and count → identify heavy keys (count > total/salt_count).  
 4. Assign:
    - Heavy keys → `floor(rand() * salt_count)`
-   - Light keys → `pmod(hash(key), salt_count)`  
-5. Create `salted_key` → repartition → cache
+   - Light keys → `pmod(hash(col), salt_count)`
+5. Repartition and cache.
 
 ---
 
 ### Fast Schema Inference
 
-- `.limit()` to sample rows  
-- Regex, numeric range, JSON, and boolean sniffing  
-- Null-safe `try_cast()` for Spark stability  
-- Zero RDDs or Pandas usage
+- Uses `.limit()` to collect `max_sample` records  
+- Applies regex, JSON, numeric sniffing  
+- Avoids type errors via `try_cast()`  
+- Falls back to `StringType` for undecidable fields
 
 ---
 
 ### DRTree Logic
 
-- Splits on skewed columns  
-- Supports recursive logical branching  
-- Each node = a Spark SQL predicate  
-- Always returns a fallback all-true branch
+- Root splits on most skewed column  
+- Recursive decision tree branching  
+- Every node stores a Spark SQL predicate  
+- Tree always includes a fallback: `all → true`
+
+---
+
+### DRTree ASCII Diagram
+
+```text
+                      [Root Node: amount]
+                             |
+                 ┌──────────┴──────────┐
+                 |                     |
+     [DecisionNode: amount ≤ 500]   [DecisionNode: amount > 500]
+                 |                     |
+           ┌─────┴─────┐         ┌─────┴─────┐
+           |           |         |           |
+ [LeafNode: ≤100] [LeafNode: 101–500] [LeafNode: 501–1000] [LeafNode: >1000]
+
+Legend:
+- Root Node → First entry node
+- DecisionNode → Conditional split (e.g. amount ≤ 500)
+- LeafNode → Logical partition / shard for query pushdown
+```
 
 ---
 
 ### Key Detection
 
-- Primary: `(distinct - nulls) / total >= threshold`  
-- Composite: tests top combinations with high uniqueness  
-- Shard-aware: DRTree logic passed into key scanner
+- Single column: `(distinct - nulls) / total ≥ threshold`  
+- Composite key: top N combos tested via distinctiveness  
+- Fallback to best-available candidate
 
 ---
 
 ### Auto-Parameter Advisor
 
-- Suggests top skewed & low-cardinality categorical columns  
-- Single-pass, sample-based profiling  
-- Returns: `(skew_cols, groupBy_cols, metrics_df)`
+- Samples `sample_frac` up to `max_sample` rows  
+- Detects:
+  - Highly skewed numeric columns (via IQR)
+  - Low-cardinality string columns  
+- Returns a clean `metrics_df` and top-N candidates
 
 ---
 
 ## 🛠️ API Reference
 
-### `HexaDruid` Core Methods
+### Core Methods
 
 | Method               | Signature                                                                 |
 |----------------------|---------------------------------------------------------------------------|
 | Constructor          | `HexaDruid(df, output_dir="hexa_druid_outputs")`                          |
-| `schemaVisor()`      | `(sample_frac=0.01, max_sample=1000) → (typed_df, schema, dr)`            |
-| `detect_skew()`      | `(threshold=0.1, top_n=3) → List[str]`                                    |
-| `apply_smart_salting()` | `(col_name=None, salt_count=None) → DataFrame`                         |
-| `detect_keys()`      | `(threshold=0.99, max_combo=3) → List[str]`                               |
-| `build_shard_tree()` | `(detector, max_depth=3, min_samples=500) → DRTree`                       |
+| schemaVisor()        | `(sample_frac=0.01, max_sample=1000) → (typed_df, schema, dr)`            |
+| detect_skew()        | `(threshold=0.1, top_n=3) → List[str]`                                    |
+| apply_smart_salting()| `(col_name=None, salt_count=None) → DataFrame`                            |
+| detect_keys()        | `(threshold=0.99, max_combo=3) → List[str]`                               |
+| build_shard_tree()   | `(detector, max_depth=3, min_samples=500) → DRTree`                       |
 
 ---
 
 ### Wrappers & Utilities
 
-| Function / Class          | Description                                                           |
-|---------------------------|-----------------------------------------------------------------------|
-| `simple_optimize()`       | Infer schema + apply smart salting in one call                        |
-| `visualize_salting()`     | Print before/after z-score distributions for a given column           |
-| `interactive_optimize()`  | Advisor → table → prompt → salting pipeline                           |
-| `AutoParameterAdvisor`    | `recommend() → (skew_cols, cat_cols, metrics_df)`                     |
-| `DRTree`, `Branch`, `Root`| Build and inspect decision-rule trees for logical sharding            |
+| Function / Class         | Description                                                           |
+|--------------------------|-----------------------------------------------------------------------|
+| `simple_optimize()`      | Infer schema + apply smart salting in one line                        |
+| `visualize_salting()`    | Show before/after z-score distribution plots                          |
+| `interactive_optimize()` | Advisor → table → prompt → salting                                   |
+| `AutoParameterAdvisor`   | `.recommend() → (skew_cols, cat_cols, metrics_df)`                    |
+| `DRTree`, `Branch`, `Root` | Build & introspect logical trees for partition sharding             |
 
 ---
 
@@ -172,20 +195,22 @@ pytest tests/
 
 ## 🛣️ Roadmap
 
-- [ ] Multi-format ingestion (Avro, Delta, Iceberg)  
-- [ ] Streaming support & incremental re-sharding  
-- [ ] JupyterLab extension for visual DRTree editing  
-- [ ] REST/gRPC microservice and Kubernetes charts  
-- [ ] Web UI for interactive parameter tuning and audit logs  
+- [ ] Multi-format support: Avro, Delta, Iceberg  
+- [ ] Streaming + incremental DRTree updates  
+- [ ] JupyterLab plugin for tree visual editing  
+- [ ] REST/gRPC microservice + Kubernetes helm charts  
+- [ ] Web UI for audit trails & optimization logs  
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests and issues welcome—please see `CONTRIBUTING.md`.
+Pull requests, feature ideas, and bug reports are welcome.  
+Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
 ---
 
 ## 📄 License
 
-MIT © 2025 Omar Hossam Attia
+MIT © 2025 Omar Hossam Attia  
+Current Version: **v0.2.2**
