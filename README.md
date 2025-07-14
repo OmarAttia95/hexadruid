@@ -1,8 +1,11 @@
-# HexaDruid 🧠⚡
+# HexaDruid: Intelligent Data Skew & Schema Optimizer for PySpark  
+**Inspired by Ancient Druid Wisdom — Optimized for Modern Spark Pipelines**
 
 [![PyPI version](https://badge.fury.io/py/hexadruid.svg)](https://badge.fury.io/py/hexadruid)  
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)  
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
+[![LinkedIn: Omar Hossam Attia](https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin)](http://linkedin.com/in/omar-h-attia-pmp®-855a091a4)  
+[![Medium: Read the Article](https://img.shields.io/badge/Medium-HexaDruid_Story-black?logo=medium)](https://medium.com/@wrbyspdkf/introducing-hexadruid-using-ancient-druid-wisdom-to-optimize-spark-pipelines-c2ee09dc0b38)
 
 **HexaDruid** is an intelligent Spark optimizer designed to tackle **data skew**, **ambiguous key detection**, and **schema bloat** using smart salting, recursive shard-aware rule trees (DRTree), and adaptive tuning.  
 It enables better parallelism, safer memory layout, and intelligent insight into skewed datasets using **pure PySpark DataFrame API**.
